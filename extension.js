@@ -18,11 +18,12 @@ function activate(context) {
 
             // Send to Ollama for analysis
             try {
-                const response = await sendToOllama(selectedText);
+                // const response = await sendToOllama(selectedText);
 				// console.log("Response: ",response)
                 // displayResponse(response);
-                appendComment(response.data.response, editor, selection);
-                vscode.window.showInformationMessage("Comment added successfully!");
+                // appendComment(response.data.response, editor, selection);
+                // vscode.window.showInformationMessage("Comment added successfully!");
+                executeEditorCommandWithProgress(selectedText,"addComment",editor,selection)
             } catch (error) {
                 vscode.window.showErrorMessage(`Error analyzing code: ${error.message}`);
             }
@@ -41,25 +42,91 @@ function activate(context) {
 }
 
 // Command implementation with progress indicator
-async function executeCommandWithProgress(selectedText) {
-    await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: 'Coding Agent',
-            cancellable: false // Set to true if you want the user to be able to cancel the task
-        },
-        async (progress) => {
-            progress.report({ increment: 0, message: 'Please wait. Great things take time!' });
+async function executeCommandWithProgress(selectedText,command) {
+    switch(command){
+        case "debugging":
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Coding Agent',
+                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                },
+                async (progress) => {
+                    progress.report({ increment: 0, message: 'Please wait. Great things take time!' });
+        
+                    try {
+                        const response = await sendToOllamaForDebugging(selectedText);
+                        progress.report({ increment: 100, message: 'Analysis complete!' });
+                        displayDebuggingHints(response);
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`Error: ${error.message}`);
+                    }
+                }
+            );
+        case "describe":
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Coding Agent',
+                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                },
+                async (progress) => {
+                    progress.report({ increment: 0, message: 'Hang tight, analyzing your code!' });
+        
+                    try {
+                        const response = await sendToOllamaForDescription(selectedText);
+                        progress.report({ increment: 100, message: 'Analysis complete!' });
+                        displayDescription(response);
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`Error: ${error.message}`);
+                    }
+                }
+            );
+        case "generateDocument":
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Coding Agent',
+                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                },
+                async (progress) => {
+                    progress.report({ increment: 0, message: 'Sit back! We’re making your code less mysterious.' });
+        
+                    try {
+                        const generatedDoc = await ollamaGenerateDocument(selectedText);
+                        progress.report({ increment: 100, message: 'Analysis complete!' });
+                        displayGeneratedDoc(generatedDoc);
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`Error: ${error.message}`);
+                    }
+                }
+            );
+    }
+}
 
-            try {
-                const response = await sendToOllamaForDebugging(selectedText);
-                progress.report({ increment: 100, message: 'Analysis complete!' });
-                displayDebuggingHints(response);
-            } catch (error) {
-                vscode.window.showErrorMessage(`Error: ${error.message}`);
-            }
-        }
-    );
+async function executeEditorCommandWithProgress(selectedText,command,editor,selection) {
+    switch(command){
+        case "addComment":
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Coding Agent',
+                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                },
+                async (progress) => {
+                    progress.report({ increment: 0, message: 'Just a moment, creating the perfect comment!' });
+        
+                    try {
+                        const response = await sendToOllama(selectedText);
+                        progress.report({ increment: 100, message: 'Analysis complete!' });
+                        appendComment(response.data.response, editor, selection);
+                        vscode.window.showInformationMessage("Comment added successfully!");
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`Error: ${error.message}`);
+                    }
+                }
+            );
+    }
 }
 
 // Function for the "Describe Selected Code" command
@@ -76,8 +143,9 @@ async function describeSelectedCode() {
         }
 
         try {
-            const description = await sendToOllamaForDescription(selectedText);
-            displayDescription(description);
+            // const description = await sendToOllamaForDescription(selectedText);
+            // displayDescription(description);
+            executeCommandWithProgress(selectedText,"describe")
         } catch (error) {
             vscode.window.showErrorMessage(`Error describing code: ${error.message}`);
         }
@@ -102,7 +170,7 @@ async function debuggingHints() {
         try {
             // const debuggingHintsResponse = await sendToOllamaForDebugging(selectedText);
             // displayDebuggingHints(debuggingHintsResponse);
-            executeCommandWithProgress(selectedText)
+            executeCommandWithProgress(selectedText,"debugging")
         } catch (error) {
             vscode.window.showErrorMessage(`Error debugging code: ${error.message}, Full error: ${error}`);
         }
@@ -124,8 +192,9 @@ async function generateDocument() {
         }
 
         try {
-            const generatedDoc = await ollamaGenerateDocument(selectedText);
-            displayGeneratedDoc(generatedDoc);
+            // const generatedDoc = await ollamaGenerateDocument(selectedText);
+            // displayGeneratedDoc(generatedDoc);
+            executeCommandWithProgress(selectedText,"generateDocument")
         } catch (error) {
             vscode.window.showErrorMessage(`Error generating document: ${error.message}, Full error: ${error}`);
         }
