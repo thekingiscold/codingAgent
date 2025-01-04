@@ -28,6 +28,10 @@
       {
         "command": "extension.generateDocument",
         "title": "Generate Document"
+      },
+      {
+        "command": "extension.codeReview",
+        "title": "Review the code"
       }
     ]
   },

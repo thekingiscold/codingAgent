@@ -38,7 +38,9 @@ function activate(context) {
 
     let generateDocumentCommand = vscode.commands.registerCommand('extension.generateDocument', generateDocument);
 
-    context.subscriptions.push(disposable, describeCodeCommand, debuggingCodeCommand, generateDocumentCommand);
+    let codeReviewSelectedCodeCommand = vscode.commands.registerCommand('extension.codeReview', codeReviewSelectedCode);
+
+    context.subscriptions.push(disposable, describeCodeCommand, debuggingCodeCommand, generateDocumentCommand, codeReviewSelectedCodeCommand);
 }
 
 // Command implementation with progress indicator
@@ -62,7 +64,8 @@ async function executeCommandWithProgress(selectedText,command) {
                         vscode.window.showErrorMessage(`Error: ${error.message}`);
                     }
                 }
-            );
+            )
+            break;
         case "describe":
             await vscode.window.withProgress(
                 {
@@ -81,7 +84,8 @@ async function executeCommandWithProgress(selectedText,command) {
                         vscode.window.showErrorMessage(`Error: ${error.message}`);
                     }
                 }
-            );
+            )
+            break;
         case "generateDocument":
             await vscode.window.withProgress(
                 {
@@ -100,9 +104,32 @@ async function executeCommandWithProgress(selectedText,command) {
                         vscode.window.showErrorMessage(`Error: ${error.message}`);
                     }
                 }
-            );
+            )
+            break;
+        case "reviewCode":
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Coding Agent',
+                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                },
+                async (progress) => {
+                    progress.report({ increment: 0, message: 'Good code is like a poetry. Review on the way!' });
+        
+                    try {
+                        const response = await sendToOllamaForCodeReview(selectedText);
+                        progress.report({ increment: 100, message: 'Analysis complete!' });
+                        displayCodeReview(response);
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`Error: ${error.message}`);
+                    }
+                }
+            )
+            break;
     }
 }
+
+
 
 async function executeEditorCommandWithProgress(selectedText,command,editor,selection) {
     switch(command){
@@ -146,6 +173,31 @@ async function describeSelectedCode() {
             // const description = await sendToOllamaForDescription(selectedText);
             // displayDescription(description);
             executeCommandWithProgress(selectedText,"describe")
+        } catch (error) {
+            vscode.window.showErrorMessage(`Error describing code: ${error.message}`);
+        }
+    } else {
+        vscode.window.showErrorMessage("No active editor found. Open a file and select some code.");
+    }
+}
+
+// Function for the "Describe Selected Code" command
+async function codeReviewSelectedCode() {
+    const editor = vscode.window.activeTextEditor;
+
+    if (editor) {
+        const selection = editor.selection;
+        const selectedText = editor.document.getText(selection);
+
+        if (selectedText.trim() === "") {
+            vscode.window.showErrorMessage("No code selected. Please highlight some code and try again.");
+            return;
+        }
+
+        try {
+            // const description = await sendToOllamaForDescription(selectedText);
+            // displayDescription(description);
+            executeCommandWithProgress(selectedText,"reviewCode")
         } catch (error) {
             vscode.window.showErrorMessage(`Error describing code: ${error.message}`);
         }
@@ -265,6 +317,24 @@ async function sendToOllamaForDescription(code) {
     }
 }
 
+// Helper function to send code to Ollama for description
+async function sendToOllamaForCodeReview(code) {
+    const apiUrl = "http://localhost:11434/api/generate"; // Replace with your Ollama API endpoint
+    const prompt = `Provide a review for this code within 100 words and format in like a list:\n\n${code}. Do not assume full forms for abbreviates. Keep abbreviates as it is and return just the list, nothing else!`;
+    const body = {
+        model: "llama3.1",
+        prompt: prompt,
+        stream: false
+    };
+
+    try {
+        const response = await axios.post(apiUrl, body);
+        return response.data.response;
+    } catch (error) {
+        throw new Error("Failed to fetch description from Ollama.");
+    }
+}
+
 function appendComment(commentText, editor, selection) {
     console.log("Comment: ", commentText);
     commentText = commentText.replace(/^\/\/\s*/, "");
@@ -284,6 +354,11 @@ function appendComment(commentText, editor, selection) {
 // Function to display description
 function displayDescription(descriptionText) {
     vscode.window.showInformationMessage(`Code Description:\n${descriptionText}`);
+}
+
+// Function to display description
+function displayCodeReview(codeReviewText) {
+    vscode.window.showInformationMessage(`Code Review:\n${codeReviewText}`);
 }
 
 // Function to display debugging hints
