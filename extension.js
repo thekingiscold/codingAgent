@@ -2,6 +2,10 @@ const vscode = require('vscode');
 const axios = require('axios');
 const { marked } = require('marked');
 const { commandCodeReview } = require('./commands/commandCodeReview');
+const { displayDescription } = require('./display/displayDescription');
+const { displayCodeReview } = require('./display/displayCodeReview');
+const { displayCodeDocumentaion } = require('./display/displayCodeDocumentation');
+const { displayDebuggingHints} = require('./display/displayDebuggingHints');
 
 function activate(context) {
     let disposable = vscode.commands.registerCommand('extension.addComment', async function () {
@@ -19,11 +23,6 @@ function activate(context) {
 
             // Send to Ollama for analysis
             try {
-                // const response = await sendToOllama(selectedText);
-				// console.log("Response: ",response)
-                // displayResponse(response);
-                // appendComment(response.data.response, editor, selection);
-                // vscode.window.showInformationMessage("Comment added successfully!");
                 executeEditorCommandWithProgress(selectedText,"addComment",editor,selection)
             } catch (error) {
                 vscode.window.showErrorMessage(`Error analyzing code: ${error.message}`);
@@ -75,7 +74,7 @@ async function executeCommandWithProgress(selectedText,command) {
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Coding Agent',
-                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                    cancellable: true // Set to true if you want the user to be able to cancel the task
                 },
                 async (progress) => {
                     progress.report({ increment: 0, message: 'Hang tight, analyzing your code!' });
@@ -95,7 +94,7 @@ async function executeCommandWithProgress(selectedText,command) {
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Coding Agent',
-                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                    cancellable: true // Set to true if you want the user to be able to cancel the task
                 },
                 async (progress) => {
                     progress.report({ increment: 0, message: 'Sit back! We’re making your code less mysterious.' });
@@ -103,7 +102,8 @@ async function executeCommandWithProgress(selectedText,command) {
                     try {
                         const generatedDoc = await ollamaGenerateDocument(selectedText);
                         progress.report({ increment: 100, message: 'Analysis complete!' });
-                        displayGeneratedDoc(generatedDoc);
+                        // displayGeneratedDoc(generatedDoc);
+                        displayCodeDocumentaion(generatedDoc);
                     } catch (error) {
                         vscode.window.showErrorMessage(`Error: ${error.message}`);
                     }
@@ -115,7 +115,7 @@ async function executeCommandWithProgress(selectedText,command) {
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Coding Agent',
-                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                    cancellable: true // Set to true if you want the user to be able to cancel the task
                 },
                 async (progress) => {
                     progress.report({ increment: 0, message: 'Good code is like a poetry. Review on the way!' });
@@ -143,7 +143,7 @@ async function executeEditorCommandWithProgress(selectedText,command,editor,sele
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Coding Agent',
-                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                    cancellable: true // Set to true if you want the user to be able to cancel the task
                 },
                 async (progress) => {
                     progress.report({ increment: 0, message: 'Just a moment, creating the perfect comment!' });
@@ -176,7 +176,6 @@ async function describeSelectedCode() {
 
         try {
             // const description = await sendToOllamaForDescription(selectedText);
-            // displayDescription(description);
             executeCommandWithProgress(selectedText,"describe")
         } catch (error) {
             vscode.window.showErrorMessage(`Error describing code: ${error.message}`);
@@ -200,8 +199,6 @@ async function codeReviewSelectedCode() {
         }
 
         try {
-            // const description = await sendToOllamaForDescription(selectedText);
-            // displayDescription(description);
             executeCommandWithProgress(selectedText,"reviewCode")
         } catch (error) {
             vscode.window.showErrorMessage(`Error describing code: ${error.message}`);
@@ -226,7 +223,6 @@ async function debuggingHints() {
 
         try {
             // const debuggingHintsResponse = await sendToOllamaForDebugging(selectedText);
-            // displayDebuggingHints(debuggingHintsResponse);
             executeCommandWithProgress(selectedText,"debugging")
         } catch (error) {
             vscode.window.showErrorMessage(`Error debugging code: ${error.message}, Full error: ${error}`);
@@ -249,8 +245,6 @@ async function generateDocument() {
         }
 
         try {
-            // const generatedDoc = await ollamaGenerateDocument(selectedText);
-            // displayGeneratedDoc(generatedDoc);
             executeCommandWithProgress(selectedText,"generateDocument")
         } catch (error) {
             vscode.window.showErrorMessage(`Error generating document: ${error.message}, Full error: ${error}`);
@@ -356,131 +350,6 @@ function appendComment(commentText, editor, selection) {
     });
 }
 
-// Function to display description
-function displayDescription(descriptionText) {
-    vscode.window.showInformationMessage(`Code Description:\n${descriptionText}`);
-}
-
-// Function to display description
-function displayCodeReview(codeReviewText) {
-    vscode.window.showInformationMessage(`Code Review:\n${codeReviewText}`);
-}
-
-// Function to display debugging hints
-function displayDebuggingHints(debuggingHintsResponse) {
-    // Create a Webview panel to display debugging hints
-    const panel = vscode.window.createWebviewPanel(
-        'debuggingHints', // Unique identifier for the webview panel
-        'Debugging Tips', // Title of the panel
-        vscode.ViewColumn.One, // Panel placement
-        {
-            enableScripts: false, // No JavaScript execution
-            retainContextWhenHidden: true // Retain context when the panel is hidden
-        }
-    );
-
-    // Set HTML content with black background and white text
-    panel.webview.html = `
-        <html>
-        <head>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    padding: 20px;
-                    background-color: #000000;
-                    color: #ffffff;
-                    margin: 0;
-                }
-                pre {
-                    background-color: #333333;
-                    color: #ffffff;
-                    padding: 10px;
-                    border-radius: 5px;
-                    overflow-x: auto;
-                }
-                h2 {
-                    color: #007acc;
-                }
-                .markdown {
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                    font-size: 14px;
-                }
-                strong {
-                    font-weight: bold;
-                }
-                em {
-                    font-style: italic;
-                }
-            </style>
-        </head>
-        <body>
-            <h2>Debugging Tips</h2>
-            <div class="markdown">
-                ${marked(debuggingHintsResponse)} <!-- Use the marked library to convert markdown -->
-            </div>
-        </body>
-        </html>
-    `;
-}
-
-function displayGeneratedDoc(generatedDoc) {
-    // Create a Webview panel to display debugging hints
-    const panel = vscode.window.createWebviewPanel(
-        'documentGenerator', // Unique identifier for the webview panel
-        'Code Document', // Title of the panel
-        vscode.ViewColumn.One, // Panel placement
-        {
-            enableScripts: false, // No JavaScript execution
-            retainContextWhenHidden: true // Retain context when the panel is hidden
-        }
-    );
-
-    // Set HTML content with black background and white text
-    panel.webview.html = `
-        <html>
-        <head>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    padding: 20px;
-                    background-color: #000000;
-                    color: #ffffff;
-                    margin: 0;
-                }
-                pre {
-                    background-color: #333333;
-                    color: #ffffff;
-                    padding: 10px;
-                    border-radius: 5px;
-                    overflow-x: auto;
-                }
-                h2 {
-                    color: #007acc;
-                }
-                .markdown {
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                    font-size: 14px;
-                }
-                strong {
-                    font-weight: bold;
-                }
-                em {
-                    font-style: italic;
-                }
-            </style>
-        </head>
-        <body>
-            <h2>Generated Document</h2>
-            <div class="markdown">
-                ${marked(generatedDoc)} <!-- Use the marked library to convert markdown -->
-            </div>
-        </body>
-        </html>
-    `;
-}
-
 // Function to send the code to Ollama
 async function sendToOllama(selectedText) {
     const endpoint = "http://localhost:11434/api/generate"; // Ollama Llama endpoint
@@ -498,11 +367,6 @@ async function sendToOllama(selectedText) {
         console.error('Error communicating with Ollama:', error);
         throw error;
     }
-}
-
-// Function to display the response
-function displayResponse(response) {
-    vscode.window.showInformationMessage(`AI Response: ${response.data.response}`);
 }
 
 exports.activate = activate;
