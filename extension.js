@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const axios = require('axios');
 const { marked } = require('marked');
+const { commandCodeReview } = require('./commands/commandCodeReview');
 
 function activate(context) {
     let disposable = vscode.commands.registerCommand('extension.addComment', async function () {
@@ -40,6 +41,9 @@ function activate(context) {
 
     let codeReviewSelectedCodeCommand = vscode.commands.registerCommand('extension.codeReview', codeReviewSelectedCode);
 
+    // let codeReviewSelectedCodeCommand = vscode.commands.registerCommand('extension.codeReview', commandCodeReview);
+
+
     context.subscriptions.push(disposable, describeCodeCommand, debuggingCodeCommand, generateDocumentCommand, codeReviewSelectedCodeCommand);
 }
 
@@ -51,7 +55,7 @@ async function executeCommandWithProgress(selectedText,command) {
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: 'Coding Agent',
-                    cancellable: false // Set to true if you want the user to be able to cancel the task
+                    cancellable: true // Set to true if you want the user to be able to cancel the task
                 },
                 async (progress) => {
                     progress.report({ increment: 0, message: 'Please wait. Great things take time!' });
@@ -130,7 +134,8 @@ async function executeCommandWithProgress(selectedText,command) {
 }
 
 
-
+// Command where we need to update the editor.
+// async function executeUpdateEditorCommandWithProgress(selectedText,command,editor,selection) {
 async function executeEditorCommandWithProgress(selectedText,command,editor,selection) {
     switch(command){
         case "addComment":
@@ -181,7 +186,7 @@ async function describeSelectedCode() {
     }
 }
 
-// Function for the "Describe Selected Code" command
+// Function for the "Review Selected Code" command
 async function codeReviewSelectedCode() {
     const editor = vscode.window.activeTextEditor;
 
